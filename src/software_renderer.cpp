@@ -310,14 +310,12 @@ namespace CS248
 
         // Task 0:
         // Implement Bresenham's algorithm (delete the line below and implement your own)
-        int x, y, dx, dy, dx1, dy1, px, py, x_end, y_end;
+        int x, y, dx, dy, px, py, x_end, y_end;
         dx = x1 - x0;
         dy = y1 - y0;
-        dx1 = fabs(dx);
-        dy1 = fabs(dy);
-        px = 2 * dy1 - dx1;
-        py = 2 * dx1 - dy1;
-        if (dy1 <= dx1)
+        px = 2 * abs(dy) - abs(dx);
+        py = 2 * abs(dx) - abs(dy);
+        if (abs(dy) <= abs(dx))
         {
             if (dx >= 0)
             {
@@ -337,19 +335,15 @@ namespace CS248
                 x = x + 1;
                 if (px < 0)
                 {
-                    px = px + 2 * dy1;
+                    px = px + 2 * abs(dy);
                 }
                 else
                 {
                     if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                    {
                         y = y + 1;
-                    }
                     else
-                    {
                         y = y - 1;
-                    }
-                    px = px + 2 * (dy1 - dx1);
+                    px = px + 2 * (abs(dy) - abs(dx));
                 }
                 fill_pixel(x, y, color);
             }
@@ -374,19 +368,15 @@ namespace CS248
                 y = y + 1;
                 if (py <= 0)
                 {
-                    py = py + 2 * dx1;
+                    py = py + 2 * abs(dx);
                 }
                 else
                 {
                     if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                    {
                         x = x + 1;
-                    }
                     else
-                    {
                         x = x - 1;
-                    }
-                    py = py + 2 * (dx1 - dy1);
+                    py = py + 2 * (abs(dx) - abs(dy));
                 }
                 fill_pixel(x, y, color);
             }
@@ -415,6 +405,43 @@ namespace CS248
     {
         // Task 1:
         // Implement triangle rasterization
+
+        // check if it's counterclockwise, if so, swap points
+        double ccw = is_counter_clockwise(x0, y0, x1, y1, x2, y2);
+        if (!ccw) 
+        {
+            float x_tmp = x0, y_tmp = y0;
+            x0 = x2, y0 = y2;
+            x2 = x_tmp, y2 = y_tmp;
+        }
+
+        // find the bounding boxes
+        int min_x, min_y, max_x, max_y;
+        min_x = min({x0, x1, x2});
+        min_y = min({y0, y1, y2});
+        max_x = max({x0, x1, x2});
+        max_y = max({y0, y1, y2});
+
+        Vector2D N1 = Vector2D((double)(y1 - y0), -(double)(x1 - x0));
+        Vector2D N2 = Vector2D((double)(y2 - y1), -(double)(x2 - x1));
+        Vector2D N3 = Vector2D((double)(y0 - y2), -(double)(x0 - x2));
+
+        for (int y = min_y; y < max_y; y++)
+        {
+            for (int x = min_x; x < max_x; x++)
+            {
+                Vector2D V1 = Vector2D(x - x0, y - y0);
+                Vector2D V2 = Vector2D(x - x1, y - y1);
+                Vector2D V3 = Vector2D(x - x2, y - y2);
+
+                if (N1.x * V1.x + N1.y * V1.y < 0 && 
+                    N2.x * V2.x + N2.y * V2.y < 0 && 
+                    N3.x * V3.x + N3.y * V3.y < 0)
+                {
+                    fill_pixel(x, y, color);
+                }
+            }
+        }
 
         // Advanced Task
         // Implementing Triangle Edge Rules
