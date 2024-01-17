@@ -395,6 +395,19 @@ namespace CS248
         // Drawing Smooth Lines with Line Width
     }
 
+    bool is_counter_clockwise(float x0, float y0, float x1, float y1, float x2, float y2)
+    {
+        Vector3D v1 = Vector3D((double)x1, (double)y1, 0) - Vector3D((double)x0, (double)y0, 0);
+        Vector3D v2 = Vector3D((double)x2, (double)y2, 0) - Vector3D((double)x1, (double)y1, 0);
+
+        Vector3D cross;
+        cross.x = v1.y * v2.z - v1.z * v2.y;
+        cross.y = v1.x * v2.z - v1.z * v2.x;
+        cross.z = v1.x * v2.y - v1.y * v2.x;
+
+        return cross.z > 0;
+    }
+
     void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
                                                  float x1, float y1,
                                                  float x2, float y2,
