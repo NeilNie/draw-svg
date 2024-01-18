@@ -310,6 +310,9 @@ namespace CS248
 
         // Task 0:
         // Implement Bresenham's algorithm (delete the line below and implement your own)
+        ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
+        return;
+
         int x, y, dx, dy, px, py, x_end, y_end;
         dx = x1 - x0;
         dy = y1 - y0;
@@ -416,7 +419,7 @@ namespace CS248
         }
 
         // find the bounding boxes
-        int min_x, min_y, max_x, max_y;
+        float min_x, min_y, max_x, max_y;
         min_x = min({x0, x1, x2});
         min_y = min({y0, y1, y2});
         max_x = max({x0, x1, x2});
@@ -426,9 +429,10 @@ namespace CS248
         Vector2D N2 = Vector2D((double)(y2 - y1), -(double)(x2 - x1));
         Vector2D N3 = Vector2D((double)(y0 - y2), -(double)(x0 - x2));
 
-        for (int y = min_y; y < max_y; y++)
+        // draw for each pixel within the bounding box
+        for (int y = floor(min_y); y < floor(max_y); y++)
         {
-            for (int x = min_x; x < max_x; x++)
+            for (int x = floor(min_x); x < floor(max_x); x++)
             {
                 Vector2D V1 = Vector2D(x - x0, y - y0);
                 Vector2D V2 = Vector2D(x - x1, y - y1);
@@ -442,6 +446,10 @@ namespace CS248
                 }
             }
         }
+
+        // rasterize_line(x0, y0, x1, y1, color);
+        // rasterize_line(x1, y1, x2, y2, color);
+        // rasterize_line(x2, y2, x0, y0, color);
 
         // Advanced Task
         // Implementing Triangle Edge Rules
