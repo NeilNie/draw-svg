@@ -297,6 +297,8 @@ namespace CS248
 
         // fill sample - NOT doing alpha blending!
         // TODO: Call fill_pixel here to run alpha blending
+        fill_pixel(sx, sy, color);
+
         pixel_buffer[4 * (sx + sy * width)] = (uint8_t)(color.r * 255);
         pixel_buffer[4 * (sx + sy * width) + 1] = (uint8_t)(color.g * 255);
         pixel_buffer[4 * (sx + sy * width) + 2] = (uint8_t)(color.b * 255);
@@ -311,79 +313,79 @@ namespace CS248
         // Task 0:
         // Implement Bresenham's algorithm (delete the line below and implement your own)
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
-        return;
+        // return;
 
-        int x, y, dx, dy, px, py, x_end, y_end;
-        dx = x1 - x0;
-        dy = y1 - y0;
-        px = 2 * abs(dy) - abs(dx);
-        py = 2 * abs(dx) - abs(dy);
-        if (abs(dy) <= abs(dx))
-        {
-            if (dx >= 0)
-            {
-                x = x0;
-                y = y0;
-                x_end = x1;
-            }
-            else
-            {
-                x = x1;
-                y = y1;
-                x_end = x0;
-            }
-            fill_pixel(x, y, color);
-            for (int i = 0; x < x_end; i++)
-            {
-                x = x + 1;
-                if (px < 0)
-                {
-                    px = px + 2 * abs(dy);
-                }
-                else
-                {
-                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                        y = y + 1;
-                    else
-                        y = y - 1;
-                    px = px + 2 * (abs(dy) - abs(dx));
-                }
-                fill_pixel(x, y, color);
-            }
-        }
-        else
-        {
-            if (dy >= 0)
-            {
-                x = x0;
-                y = y0;
-                y_end = y1;
-            }
-            else
-            {
-                x = x1;
-                y = y1;
-                y_end = y0;
-            }
-            fill_pixel(x, y, color);
-            for (int i = 0; y < y_end; i++)
-            {
-                y = y + 1;
-                if (py <= 0)
-                {
-                    py = py + 2 * abs(dx);
-                }
-                else
-                {
-                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                        x = x + 1;
-                    else
-                        x = x - 1;
-                    py = py + 2 * (abs(dx) - abs(dy));
-                }
-                fill_pixel(x, y, color);
-            }
-        }
+        // int x, y, dx, dy, px, py, x_end, y_end;
+        // dx = x1 - x0;
+        // dy = y1 - y0;
+        // px = 2 * abs(dy) - abs(dx);
+        // py = 2 * abs(dx) - abs(dy);
+        // if (abs(dy) <= abs(dx))
+        // {
+        //     if (dx >= 0)
+        //     {
+        //         x = x0;
+        //         y = y0;
+        //         x_end = x1;
+        //     }
+        //     else
+        //     {
+        //         x = x1;
+        //         y = y1;
+        //         x_end = x0;
+        //     }
+        //     fill_pixel(x, y, color);
+        //     for (int i = 0; x < x_end; i++)
+        //     {
+        //         x = x + 1;
+        //         if (px < 0)
+        //         {
+        //             px = px + 2 * abs(dy);
+        //         }
+        //         else
+        //         {
+        //             if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+        //                 y = y + 1;
+        //             else
+        //                 y = y - 1;
+        //             px = px + 2 * (abs(dy) - abs(dx));
+        //         }
+        //         fill_pixel(x, y, color);
+        //     }
+        // }
+        // else
+        // {
+        //     if (dy >= 0)
+        //     {
+        //         x = x0;
+        //         y = y0;
+        //         y_end = y1;
+        //     }
+        //     else
+        //     {
+        //         x = x1;
+        //         y = y1;
+        //         y_end = y0;
+        //     }
+        //     fill_pixel(x, y, color);
+        //     for (int i = 0; y < y_end; i++)
+        //     {
+        //         y = y + 1;
+        //         if (py <= 0)
+        //         {
+        //             py = py + 2 * abs(dx);
+        //         }
+        //         else
+        //         {
+        //             if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+        //                 x = x + 1;
+        //             else
+        //                 x = x - 1;
+        //             py = py + 2 * (abs(dx) - abs(dy));
+        //         }
+        //         fill_pixel(x, y, color);
+        //     }
+        // }
         // Advanced Task
         // Drawing Smooth Lines with Line Width
     }
@@ -399,6 +401,12 @@ namespace CS248
         cross.z = v1.x * v2.y - v1.y * v2.x;
 
         return cross.z > 0;
+    }
+
+    bool collinear(float x, float y, float x0, float y0, float x1, float y1)
+    {
+        float y_int = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0);
+        return fabs(y - y_int) < 0.5;
     }
 
     void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
@@ -430,27 +438,27 @@ namespace CS248
         Vector2D N3 = Vector2D((double)(y0 - y2), -(double)(x0 - x2));
 
         // draw for each pixel within the bounding box
-        for (int y = floor(min_y); y < floor(max_y); y++)
+        for (int y = floor(min_y); y < ceil(max_y) + 1; y++)
         {
-            for (int x = floor(min_x); x < floor(max_x); x++)
+            for (int x = floor(min_x); x < ceil(max_x) + 1; x++)
             {
-                Vector2D V1 = Vector2D(x - x0, y - y0);
-                Vector2D V2 = Vector2D(x - x1, y - y1);
-                Vector2D V3 = Vector2D(x - x2, y - y2);
+                Vector2D V1 = Vector2D(x - x0, (y - y0));
+                Vector2D V2 = Vector2D(x - x1, (y - y1));
+                Vector2D V3 = Vector2D(x - x2, (y - y2));
 
-                if (N1.x * V1.x + N1.y * V1.y < 0 && 
-                    N2.x * V2.x + N2.y * V2.y < 0 && 
-                    N3.x * V3.x + N3.y * V3.y < 0)
+                if ((int(N1.x * V1.x + N1.y * V1.y) <= 0 &&
+                    int(N2.x * V2.x + N2.y * V2.y) <= 0 &&
+                    int(N3.x * V3.x + N3.y * V3.y) <= 0) 
+                    // || 
+                    // collinear(x, y, x0, y0, x1, y1) || 
+                    // collinear(x, y, x1, y1, x2, y2) ||
+                    // collinear(x, y, x2, y2, x0, y0)
+                    )
                 {
-                    fill_pixel(x, y, color);
+                    rasterize_point(x, y, color);
                 }
             }
         }
-
-        // rasterize_line(x0, y0, x1, y1, color);
-        // rasterize_line(x1, y1, x2, y2, color);
-        // rasterize_line(x2, y2, x0, y0, color);
-
         // Advanced Task
         // Implementing Triangle Edge Rules
     }
