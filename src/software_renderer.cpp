@@ -132,41 +132,75 @@ namespace CS248
         this->height = height;
     }
 
+    Vector2D transform_vector_2d(Vector2D vector, Matrix3x3 transform)
+    {
+        auto output = transform * Vector3D(vector.x, vector.y, 1);
+        return Vector2D(output.x, output.y);
+    }
+
     void SoftwareRendererImp::draw_element(SVGElement *element)
     {
 
         // Task 3 (part 1):
         // Modify this to implement the transformation stack
 
-        switch (element->type)
+        if (element->type == POINT)
         {
-        case POINT:
-            draw_point(static_cast<Point &>(*element));
-            break;
-        case LINE:
-            draw_line(static_cast<Line &>(*element));
-            break;
-        case POLYLINE:
-            draw_polyline(static_cast<Polyline &>(*element));
-            break;
-        case RECT:
-            draw_rect(static_cast<Rect &>(*element));
-            break;
-        case POLYGON:
-            draw_polygon(static_cast<Polygon &>(*element));
-            break;
-        case ELLIPSE:
-            draw_ellipse(static_cast<Ellipse &>(*element));
-            break;
-        case IMAGE:
-            draw_image(static_cast<Image &>(*element));
-            break;
-        case GROUP:
-            draw_group(static_cast<Group &>(*element));
-            break;
-        default:
-            break;
+            auto point = static_cast<Point &>(*element);
+            point.position = transform_vector_2d(point.position, element->transform);
+            draw_point(point);
+        } 
+        else if (element->type == LINE) 
+        {
+            auto line = static_cast<Line &>(*element);
+            line.to = transform_vector_2d(line.to, element->transform);
+            line.from = transform_vector_2d(line.from, element->transform);
+            draw_line(line);
         }
+        else if (element->type == POLYLINE)
+        {
+            auto polyline = static_cast<Polyline &>(*element);
+            for (int i = 0; i < polyline.points.size(); i++)
+                polyline.points[i] = transform_vector_2d(polyline.points[i], element->transform);
+            draw_polyline(polyline);
+        }
+        else if (element->type == RECT)
+        {
+            auto rect = static_cast<Rect &>(*element);
+            rect.position = transform_vector_2d(rect.position, element->transform);
+            rect.dimension = transform_vector_2d(rect.dimension, element->transform);
+            draw_rect(rect);
+        }
+        else if (element->type == POLYGON)
+        {
+            auto polygon = static_cast<Polygon &>(*element);
+            for (int i = 0; i < polygon.points.size(); i++)
+                polygon.points[i] = transform_vector_2d(polygon.points[i], element->transform);
+            draw_polygon(polygon);
+        }
+        else if (element->type == ELLIPSE)
+        {
+            auto ellipse = static_cast<Ellipse &>(*element);
+            ellipse.center = transform_vector_2d(ellipse.center, element->transform);
+            ellipse.radius = transform_vector_2d(ellipse.radius, element->transform);
+            draw_ellipse(ellipse);
+        }
+        else if (element->type == IMAGE)
+        {
+            auto image = static_cast<Image &>(*element);
+            image.position = transform_vector_2d(image.position, element->transform);
+            image.dimension = transform_vector_2d(image.dimension, element->transform);
+            draw_image(image);
+        }
+        else if (element->type == GROUP)
+        {
+            auto group = static_cast<Group &>(*element);
+            // Matrix3x3 current_T = Matrix3x3::identity();
+            for (int i = 0; i < group.elements.size(); i++)
+                group.elements[i]->transform = element->transform * group.elements[i]->transform;
+            draw_group(group);
+        }
+
     }
 
     // Primitive Drawing //
