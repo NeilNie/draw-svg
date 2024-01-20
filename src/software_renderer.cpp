@@ -18,6 +18,26 @@ namespace CS248
     void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color)
     {
         // Task 2: implement this function
+
+        // check bounds
+        if (sx < 0 || sx >= width * sample_rate)
+            return;
+        if (sy < 0 || sy >= height * sample_rate)
+            return;
+
+        Color pixel_color;
+        float inv255 = 1.0 / 255.0;
+        pixel_color.r = super_pixel_buffer[4 * (sx + sy * width * sample_rate)] * inv255;
+        pixel_color.g = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 1] * inv255;
+        pixel_color.b = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
+        pixel_color.a = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
+
+        pixel_color = ref->alpha_blending_helper(pixel_color, color);
+
+        super_pixel_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
+        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
+        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 2] = (uint8_t)(pixel_color.b * 255);
+        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
     }
 
     // fill samples in the entire pixel specified by pixel coordinates
@@ -91,16 +111,23 @@ namespace CS248
 
         // Task 2:
         // You may want to modify this for supersampling support
+        printf("set sample once, resized sample buffer, %zu \n", sample_rate);
         this->sample_rate = sample_rate;
+        this->super_sample_buffer.resize(sample_rate * sample_rate * 4 * width * height);
+        this->super_pixel_buffer = &super_sample_buffer[0];
+        memset(this->super_pixel_buffer, 255, sample_rate * sample_rate * 4 * width * height);
     }
 
     void SoftwareRendererImp::set_pixel_buffer(unsigned char *pixel_buffer,
                                                size_t width, size_t height)
     {
 
-        // Task 2:
-        // You may want to modify this for supersampling support
+        // Task 2: setting the pixel buffer and super sampling pixel buffer
+        printf("set pixel buffer once, resized sample buffer, %zu \n", sample_rate);
         this->pixel_buffer = pixel_buffer;
+        this->super_sample_buffer.resize(sample_rate * sample_rate * 4 * width * height);
+        this->super_pixel_buffer = &super_sample_buffer[0];
+        memset(this->super_pixel_buffer, 255, sample_rate * sample_rate * 4 * width * height);
         this->width = width;
         this->height = height;
     }
@@ -296,8 +323,8 @@ namespace CS248
             return;
 
         // fill sample - NOT doing alpha blending!
-        // TODO: Call fill_pixel here to run alpha blending
-        fill_pixel(sx, sy, color);
+        // Call fill_pixel here to run alpha blending
+        fill_sample(sx, sy, color);
 
         pixel_buffer[4 * (sx + sy * width)] = (uint8_t)(color.r * 255);
         pixel_buffer[4 * (sx + sy * width) + 1] = (uint8_t)(color.g * 255);
@@ -419,7 +446,7 @@ namespace CS248
 
         // check if it's counterclockwise, if so, swap points
         double ccw = is_counter_clockwise(x0, y0, x1, y1, x2, y2);
-        if (!ccw) 
+        if (!ccw)
         {
             float x_tmp = x0, y_tmp = y0;
             x0 = x2, y0 = y2;
@@ -438,24 +465,25 @@ namespace CS248
         Vector2D N3 = Vector2D((double)(y0 - y2), -(double)(x0 - x2));
 
         // draw for each pixel within the bounding box
-        for (int y = floor(min_y); y < ceil(max_y) + 1; y++)
+        float increment = 1.f / (float)sample_rate;
+        for (float y = floor(min_y); y < ceil(max_y) + increment; y+=increment)
         {
-            for (int x = floor(min_x); x < ceil(max_x) + 1; x++)
+            for (float x = floor(min_x); x < ceil(max_x) + increment; x+=increment)
             {
                 Vector2D V1 = Vector2D(x - x0, (y - y0));
                 Vector2D V2 = Vector2D(x - x1, (y - y1));
                 Vector2D V3 = Vector2D(x - x2, (y - y2));
 
-                if ((int(N1.x * V1.x + N1.y * V1.y) <= 0 &&
-                    int(N2.x * V2.x + N2.y * V2.y) <= 0 &&
-                    int(N3.x * V3.x + N3.y * V3.y) <= 0) 
-                    // || 
-                    // collinear(x, y, x0, y0, x1, y1) || 
+                if ((N1.x * V1.x + N1.y * V1.y <= 0 &&
+                     N2.x * V2.x + N2.y * V2.y <= 0 &&
+                     N3.x * V3.x + N3.y * V3.y <= 0)
+                    // ||
+                    // collinear(x, y, x0, y0, x1, y1) ||
                     // collinear(x, y, x1, y1, x2, y2) ||
                     // collinear(x, y, x2, y2, x0, y0)
-                    )
+                )
                 {
-                    rasterize_point(x, y, color);
+                    fill_sample((int)(x * sample_rate), (int)(y * sample_rate), color);
                 }
             }
         }
@@ -471,11 +499,48 @@ namespace CS248
         // Implement image rasterization
     }
 
+    void apply_2x2_box_convolution_filter_at_coordinate(int x, int y, int sample_rate, int width, unsigned char *super_pixel_buffer, int *values)
+    {
+        for (int row = y; row < y + sample_rate; row += 1)
+        {
+            for (int column = x; column < x + sample_rate; column += 1)
+            {
+                values[0] += super_pixel_buffer[4 * (column + row * width)];
+                values[1] += super_pixel_buffer[4 * (column + row * width) + 1];
+                values[2] += super_pixel_buffer[4 * (column + row * width) + 2];
+                values[3] += super_pixel_buffer[4 * (column + row * width) + 3];
+            }
+        }
+    }
+
     // resolve samples to pixel buffer
     void SoftwareRendererImp::resolve(void)
     {
 
+        printf("resolving super resolution image \n");
+
+        int total_pixels = 0;
+
         // Task 2:
+        auto supersample_width = width * sample_rate;
+        for (int row = 0; row < height * sample_rate; row += sample_rate)
+        {
+            for (int column = 0; column < supersample_width; column += sample_rate)
+            {
+                int x = column / sample_rate, y = row / sample_rate;
+                int rgba[4] = {0, 0, 0, 0};
+                apply_2x2_box_convolution_filter_at_coordinate(column, row, sample_rate, supersample_width, super_pixel_buffer, rgba);
+                pixel_buffer[4 * (x + y * width)] = rgba[0] / (sample_rate * sample_rate);
+                pixel_buffer[4 * (x + y * width) + 1] = rgba[1] / (sample_rate * sample_rate);
+                pixel_buffer[4 * (x + y * width) + 2] = rgba[2] / (sample_rate * sample_rate);
+                pixel_buffer[4 * (x + y * width) + 3] = rgba[3] / (sample_rate * sample_rate);
+
+                total_pixels += 1;
+            }
+        }
+
+        printf("%d, %zu, %zu | %zu, %zu, \n", total_pixels, height * sample_rate, supersample_width, height, width);
+
         // Implement supersampling
         // You may also need to modify other functions marked with "Task 2".
         return;
