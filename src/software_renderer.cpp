@@ -464,8 +464,10 @@ namespace CS248
         Vector2D N2 = Vector2D((double)(y2 - y1), -(double)(x2 - x1));
         Vector2D N3 = Vector2D((double)(y0 - y2), -(double)(x0 - x2));
 
-        // draw for each pixel within the bounding box
+        // the increment (or step size) depends on our sample rate!
         float increment = 1.f / (float)sample_rate;
+
+        // draw for each pixel within the bounding box
         for (float y = floor(min_y); y < ceil(max_y) + increment; y+=increment)
         {
             for (float x = floor(min_x); x < ceil(max_x) + increment; x+=increment)
@@ -476,13 +478,9 @@ namespace CS248
 
                 if ((N1.x * V1.x + N1.y * V1.y <= 0 &&
                      N2.x * V2.x + N2.y * V2.y <= 0 &&
-                     N3.x * V3.x + N3.y * V3.y <= 0)
-                    // ||
-                    // collinear(x, y, x0, y0, x1, y1) ||
-                    // collinear(x, y, x1, y1, x2, y2) ||
-                    // collinear(x, y, x2, y2, x0, y0)
-                )
+                     N3.x * V3.x + N3.y * V3.y <= 0))
                 {
+                    // don't forget to scale by sample rate when populating the buffer matrix
                     fill_sample((int)(x * sample_rate), (int)(y * sample_rate), color);
                 }
             }
@@ -511,6 +509,10 @@ namespace CS248
                 values[3] += super_pixel_buffer[4 * (column + row * width) + 3];
             }
         }
+        values[0] /= (sample_rate * sample_rate);
+        values[1] /= (sample_rate * sample_rate);
+        values[2] /= (sample_rate * sample_rate);
+        values[3] /= (sample_rate * sample_rate);
     }
 
     // resolve samples to pixel buffer
@@ -523,17 +525,23 @@ namespace CS248
 
         // Task 2:
         auto supersample_width = width * sample_rate;
+
+        // loop through the indices of the supersample buffer, step size is sample rate
         for (int row = 0; row < height * sample_rate; row += sample_rate)
         {
             for (int column = 0; column < supersample_width; column += sample_rate)
             {
+
+                // compute the x and y of the pixel buffer to update
                 int x = column / sample_rate, y = row / sample_rate;
                 int rgba[4] = {0, 0, 0, 0};
+
+                // apply average filtering
                 apply_2x2_box_convolution_filter_at_coordinate(column, row, sample_rate, supersample_width, super_pixel_buffer, rgba);
-                pixel_buffer[4 * (x + y * width)] = rgba[0] / (sample_rate * sample_rate);
-                pixel_buffer[4 * (x + y * width) + 1] = rgba[1] / (sample_rate * sample_rate);
-                pixel_buffer[4 * (x + y * width) + 2] = rgba[2] / (sample_rate * sample_rate);
-                pixel_buffer[4 * (x + y * width) + 3] = rgba[3] / (sample_rate * sample_rate);
+                pixel_buffer[4 * (x + y * width)] = rgba[0];
+                pixel_buffer[4 * (x + y * width) + 1] = rgba[1];
+                pixel_buffer[4 * (x + y * width) + 2] = rgba[2];
+                pixel_buffer[4 * (x + y * width) + 3] = rgba[3];
 
                 total_pixels += 1;
             }
