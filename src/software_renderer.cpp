@@ -45,12 +45,12 @@ namespace CS248
     {
 
         // Task 2: Re-implement this function
-        for (float row = x * sample_rate; row < x * sample_rate + sample_rate; row += 1) 
+        for (float column = x * sample_rate; column < x * sample_rate + sample_rate; column += 1) 
         {
-            for (float column = y * sample_rate; column < y * sample_rate + sample_rate; column += 1)
+            for (float row = y * sample_rate; row < y * sample_rate + sample_rate; row += 1)
             {
                 // printf("drawing at %f, %f, %f, %f\n", x0, y0, row, column);
-                fill_sample(x * sample_rate, y * sample_rate, color);
+                fill_sample(column, row, color);
             }
         }
 
