@@ -45,6 +45,14 @@ namespace CS248
     {
 
         // Task 2: Re-implement this function
+        for (float row = x * sample_rate; row < x * sample_rate + sample_rate; row += 1) 
+        {
+            for (float column = y * sample_rate; column < y * sample_rate + sample_rate; column += 1)
+            {
+                // printf("drawing at %f, %f, %f, %f\n", x0, y0, row, column);
+                fill_sample(x * sample_rate, y * sample_rate, color);
+            }
+        }
 
         // check bounds
         if (x < 0 || x >= width)
@@ -195,7 +203,6 @@ namespace CS248
         else if (element->type == GROUP)
         {
             auto group = static_cast<Group &>(*element);
-            // Matrix3x3 current_T = Matrix3x3::identity();
             for (int i = 0; i < group.elements.size(); i++)
                 group.elements[i]->transform = element->transform * group.elements[i]->transform;
             draw_group(group);
@@ -374,7 +381,8 @@ namespace CS248
         // Task 0:
         // Implement Bresenham's algorithm (delete the line below and implement your own)
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
-        // return;
+
+        return;
 
         // int x, y, dx, dy, px, py, x_end, y_end;
         // dx = x1 - x0;
@@ -395,7 +403,7 @@ namespace CS248
         //         y = y1;
         //         x_end = x0;
         //     }
-        //     fill_pixel(x, y, color);
+        //     fill_sample(x, y, color);
         //     for (int i = 0; x < x_end; i++)
         //     {
         //         x = x + 1;
@@ -411,7 +419,7 @@ namespace CS248
         //                 y = y - 1;
         //             px = px + 2 * (abs(dy) - abs(dx));
         //         }
-        //         fill_pixel(x, y, color);
+        //         fill_sample(x, y, color);
         //     }
         // }
         // else
@@ -428,7 +436,7 @@ namespace CS248
         //         y = y1;
         //         y_end = y0;
         //     }
-        //     fill_pixel(x, y, color);
+        //     fill_sample(x, y, color);
         //     for (int i = 0; y < y_end; i++)
         //     {
         //         y = y + 1;
@@ -444,7 +452,7 @@ namespace CS248
         //                 x = x - 1;
         //             py = py + 2 * (abs(dx) - abs(dy));
         //         }
-        //         fill_pixel(x, y, color);
+        //         fill_sample(x, y, color);
         //     }
         // }
         // Advanced Task
@@ -552,8 +560,9 @@ namespace CS248
     // resolve samples to pixel buffer
     void SoftwareRendererImp::resolve(void)
     {
-
         printf("resolving super resolution image \n");
+
+        memset(this->pixel_buffer, 0, 4 * width * height);
 
         int total_pixels = 0;
 
