@@ -4,100 +4,104 @@
 #include <vector>
 #include "CS248.h"
 
-namespace CS248 {
+namespace CS248
+{
 
-static const int kMaxMipLevels = 14;
+    static const int kMaxMipLevels = 14;
 
-typedef enum SampleMethod{
-  NEAREST,
-  BILINEAR,
-  TRILINEAR
-} SampleMethod;
+    typedef enum SampleMethod
+    {
+        NEAREST,
+        BILINEAR,
+        TRILINEAR
+    } SampleMethod;
 
-struct MipLevel {
-  size_t width; 
-  size_t height;
-  std::vector<unsigned char> texels;
-};
+    struct MipLevel
+    {
+        size_t width;
+        size_t height;
+        std::vector<unsigned char> texels;
+    };
 
-struct Texture {
-  size_t width;
-  size_t height;
-  std::vector<MipLevel> mipmap;
-};
+    struct Texture
+    {
+        size_t width;
+        size_t height;
+        std::vector<MipLevel> mipmap;
+    };
 
-class Sampler2D {
- public:
+    class Sampler2D
+    {
+    public:
+        Sampler2D(SampleMethod method) : method(method) {}
 
-  Sampler2D( SampleMethod method ) : method ( method ) { }
+        ~Sampler2D();
 
-  ~Sampler2D();
+        virtual void generate_mips(Texture &tex, int startLevel) = 0;
 
-  virtual void generate_mips( Texture& tex, int startLevel ) = 0;
+        virtual Color sample_nearest(Texture &tex,
+                                     float u, float v,
+                                     int level = 0) = 0;
 
-  virtual Color sample_nearest(Texture& tex, 
-                               float u, float v, 
-                               int level = 0) = 0;
+        virtual Color sample_bilinear(Texture &tex,
+                                      float u, float v,
+                                      int level = 0) = 0;
 
-  virtual Color sample_bilinear(Texture& tex, 
-                                float u, float v, 
-                                int level = 0) = 0;
+        virtual Color sample_trilinear(Texture &tex,
+                                       float u, float v,
+                                       float u_scale, float v_scale) = 0;
 
-  virtual Color sample_trilinear(Texture& tex, 
-                                 float u, float v, 
-                                 float u_scale, float v_scale) = 0;
-  
-  inline SampleMethod get_sample_method() const {
-    return method;
-  }
- 
- protected:
+        inline SampleMethod get_sample_method() const
+        {
+            return method;
+        }
 
-  SampleMethod method;
+    protected:
+        SampleMethod method;
 
-}; // class Sampler2D
+    }; // class Sampler2D
 
-class Sampler2DImp : public Sampler2D {
- public:
+    class Sampler2DImp : public Sampler2D
+    {
+    public:
+        Sampler2DImp(SampleMethod method = TRILINEAR) : Sampler2D(method) {}
 
-  Sampler2DImp( SampleMethod method = TRILINEAR ) : Sampler2D ( method ) { }
-  
-  void generate_mips( Texture& tex, int startLevel );
+        void generate_mips(Texture &tex, int startLevel);
 
-  Color sample_nearest(Texture& tex, 
-                       float u, float v, 
-                       int level = 0);
+        Color sample_nearest(Texture &tex,
+                             float u, float v,
+                             int level = 0);
 
-  Color sample_bilinear(Texture& tex, 
-                        float u, float v, 
-                        int level = 0);
+        Color sample_bilinear(Texture &tex,
+                              float u, float v,
+                              int level = 0);
 
-  Color sample_trilinear(Texture& tex, 
-                         float u, float v, 
-                         float u_scale, float v_scale);
-  
-}; // class sampler2DImp
+        Color sample_trilinear(Texture &tex,
+                               float u, float v,
+                               float u_scale, float v_scale);
 
-class Sampler2DRef : public Sampler2D {
- public:
+    }; // class sampler2DImp
 
-  Sampler2DRef( SampleMethod method = TRILINEAR ) : Sampler2D ( method ) { }
-  
-  void generate_mips( Texture& tex, int startLevel );
+    class Sampler2DRef : public Sampler2D
+    {
+    public:
+        Sampler2DRef(SampleMethod method = TRILINEAR) : Sampler2D(method) {}
 
-  Color sample_nearest(Texture& tex, 
-                       float u, float v, 
-                       int level = 0);
+        void generate_mips(Texture &tex, int startLevel);
 
-  Color sample_bilinear(Texture& tex, 
-                        float u, float v, 
-                        int level = 0);
+        Color sample_nearest(Texture &tex,
+                             float u, float v,
+                             int level = 0);
 
-  Color sample_trilinear(Texture& tex, 
-                         float u, float v, 
-                         float u_scale, float v_scale);
-  
-}; // class sampler2DRef
+        Color sample_bilinear(Texture &tex,
+                              float u, float v,
+                              int level = 0);
+
+        Color sample_trilinear(Texture &tex,
+                               float u, float v,
+                               float u_scale, float v_scale);
+
+    }; // class sampler2DRef
 
 } // namespace CS248
 

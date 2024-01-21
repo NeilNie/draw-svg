@@ -536,6 +536,17 @@ namespace CS248
     {
         // Task 4:
         // Implement image rasterization
+        // printf("%f, %f, %f, %f\n", x0, y0, x1, y1);
+        int level = 0;
+
+        for (int y = y0 + 1; y < y1 + 1; y++)
+        {
+            for (int x = x0 + 1; x < x1 + 1; x++){
+                float u = x / (x1 - x0) - x0 / (x1 - x0), v = y / (y1 - y0) - y0 / (y1 - y0);
+                Color c = sampler->sample_bilinear(tex, u, v, level); //Color(1, 1, 0, 1); //
+                fill_sample(x, y, c);
+            }
+        }
     }
 
     void apply_2x2_box_convolution_filter_at_coordinate(int x, int y, int sample_rate, int width, unsigned char *super_pixel_buffer, int *values)
