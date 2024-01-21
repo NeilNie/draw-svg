@@ -27,17 +27,17 @@ namespace CS248
 
         Color pixel_color;
         float inv255 = 1.0 / 255.0;
-        pixel_color.r = super_pixel_buffer[4 * (sx + sy * width * sample_rate)] * inv255;
-        pixel_color.g = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 1] * inv255;
-        pixel_color.b = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
-        pixel_color.a = super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
+        pixel_color.r = supersample_buffer[4 * (sx + sy * width * sample_rate)] * inv255;
+        pixel_color.g = supersample_buffer[4 * (sx + sy * width * sample_rate) + 1] * inv255;
+        pixel_color.b = supersample_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
+        pixel_color.a = supersample_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
 
         pixel_color = ref->alpha_blending_helper(pixel_color, color);
 
-        super_pixel_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
-        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
-        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 2] = (uint8_t)(pixel_color.b * 255);
-        super_pixel_buffer[4 * (sx + sy * width * sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
+        supersample_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
+        supersample_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
+        supersample_buffer[4 * (sx + sy * width * sample_rate) + 2] = (uint8_t)(pixel_color.b * 255);
+        supersample_buffer[4 * (sx + sy * width * sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
     }
 
     // fill samples in the entire pixel specified by pixel coordinates
@@ -45,11 +45,10 @@ namespace CS248
     {
 
         // Task 2: Re-implement this function
-        for (float column = x * sample_rate; column < x * sample_rate + sample_rate; column += 1) 
+        for (int column = x * sample_rate; column < x * sample_rate + sample_rate; column += 1) 
         {
-            for (float row = y * sample_rate; row < y * sample_rate + sample_rate; row += 1)
+            for (int row = y * sample_rate; row < y * sample_rate + sample_rate; row += 1)
             {
-                // printf("drawing at %f, %f, %f, %f\n", x0, y0, row, column);
                 fill_sample(column, row, color);
             }
         }
@@ -121,9 +120,9 @@ namespace CS248
         // You may want to modify this for supersampling support
         printf("set sample once, resized sample buffer, %zu \n", sample_rate);
         this->sample_rate = sample_rate;
-        this->super_sample_buffer.resize(sample_rate * sample_rate * 4 * width * height);
-        this->super_pixel_buffer = &super_sample_buffer[0];
-        memset(this->super_pixel_buffer, 255, sample_rate * sample_rate * 4 * width * height);
+        this->super_sample_buffer_mem.resize(sample_rate * sample_rate * 4 * width * height);
+        this->supersample_buffer = &(super_sample_buffer_mem[0]);
+        memset(this->supersample_buffer, 255, sample_rate * sample_rate * 4 * width * height);
     }
 
     void SoftwareRendererImp::set_pixel_buffer(unsigned char *pixel_buffer,
@@ -133,9 +132,9 @@ namespace CS248
         // Task 2: setting the pixel buffer and super sampling pixel buffer
         printf("set pixel buffer once, resized sample buffer, %zu \n", sample_rate);
         this->pixel_buffer = pixel_buffer;
-        this->super_sample_buffer.resize(sample_rate * sample_rate * 4 * width * height);
-        this->super_pixel_buffer = &super_sample_buffer[0];
-        memset(this->super_pixel_buffer, 255, sample_rate * sample_rate * 4 * width * height);
+        this->super_sample_buffer_mem.resize(sample_rate * sample_rate * 4 * width * height);
+        this->supersample_buffer = &(super_sample_buffer_mem[0]);
+        memset(this->supersample_buffer, 255, sample_rate * sample_rate * 4 * width * height);
         this->width = width;
         this->height = height;
     }
@@ -384,77 +383,77 @@ namespace CS248
 
         return;
 
-        // int x, y, dx, dy, px, py, x_end, y_end;
-        // dx = x1 - x0;
-        // dy = y1 - y0;
-        // px = 2 * abs(dy) - abs(dx);
-        // py = 2 * abs(dx) - abs(dy);
-        // if (abs(dy) <= abs(dx))
-        // {
-        //     if (dx >= 0)
-        //     {
-        //         x = x0;
-        //         y = y0;
-        //         x_end = x1;
-        //     }
-        //     else
-        //     {
-        //         x = x1;
-        //         y = y1;
-        //         x_end = x0;
-        //     }
-        //     fill_sample(x, y, color);
-        //     for (int i = 0; x < x_end; i++)
-        //     {
-        //         x = x + 1;
-        //         if (px < 0)
-        //         {
-        //             px = px + 2 * abs(dy);
-        //         }
-        //         else
-        //         {
-        //             if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-        //                 y = y + 1;
-        //             else
-        //                 y = y - 1;
-        //             px = px + 2 * (abs(dy) - abs(dx));
-        //         }
-        //         fill_sample(x, y, color);
-        //     }
-        // }
-        // else
-        // {
-        //     if (dy >= 0)
-        //     {
-        //         x = x0;
-        //         y = y0;
-        //         y_end = y1;
-        //     }
-        //     else
-        //     {
-        //         x = x1;
-        //         y = y1;
-        //         y_end = y0;
-        //     }
-        //     fill_sample(x, y, color);
-        //     for (int i = 0; y < y_end; i++)
-        //     {
-        //         y = y + 1;
-        //         if (py <= 0)
-        //         {
-        //             py = py + 2 * abs(dx);
-        //         }
-        //         else
-        //         {
-        //             if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-        //                 x = x + 1;
-        //             else
-        //                 x = x - 1;
-        //             py = py + 2 * (abs(dx) - abs(dy));
-        //         }
-        //         fill_sample(x, y, color);
-        //     }
-        // }
+        int x, y, dx, dy, px, py, x_end, y_end;
+        dx = x1 - x0;
+        dy = y1 - y0;
+        px = 2 * abs(dy) - abs(dx);
+        py = 2 * abs(dx) - abs(dy);
+        if (abs(dy) <= abs(dx))
+        {
+            if (dx >= 0)
+            {
+                x = x0;
+                y = y0;
+                x_end = x1;
+            }
+            else
+            {
+                x = x1;
+                y = y1;
+                x_end = x0;
+            }
+            fill_sample(x, y, color);
+            for (int i = 0; x < x_end; i++)
+            {
+                x = x + 1;
+                if (px < 0)
+                {
+                    px = px + 2 * abs(dy);
+                }
+                else
+                {
+                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+                        y = y + 1;
+                    else
+                        y = y - 1;
+                    px = px + 2 * (abs(dy) - abs(dx));
+                }
+                fill_sample(x, y, color);
+            }
+        }
+        else
+        {
+            if (dy >= 0)
+            {
+                x = x0;
+                y = y0;
+                y_end = y1;
+            }
+            else
+            {
+                x = x1;
+                y = y1;
+                y_end = y0;
+            }
+            fill_sample(x, y, color);
+            for (int i = 0; y < y_end; i++)
+            {
+                y = y + 1;
+                if (py <= 0)
+                {
+                    py = py + 2 * abs(dx);
+                }
+                else
+                {
+                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+                        x = x + 1;
+                    else
+                        x = x - 1;
+                    py = py + 2 * (abs(dx) - abs(dy));
+                }
+                fill_sample(x, y, color);
+            }
+        }
         // Advanced Task
         // Drawing Smooth Lines with Line Width
     }
@@ -560,9 +559,8 @@ namespace CS248
     // resolve samples to pixel buffer
     void SoftwareRendererImp::resolve(void)
     {
-        printf("resolving super resolution image \n");
 
-        memset(this->pixel_buffer, 0, 4 * width * height);
+        printf("resolving super resolution image \n");
 
         int total_pixels = 0;
 
@@ -580,7 +578,7 @@ namespace CS248
                 int rgba[4] = {0, 0, 0, 0};
 
                 // apply average filtering
-                apply_2x2_box_convolution_filter_at_coordinate(column, row, sample_rate, supersample_width, super_pixel_buffer, rgba);
+                apply_2x2_box_convolution_filter_at_coordinate(column, row, sample_rate, supersample_width, supersample_buffer, rgba);
                 pixel_buffer[4 * (x + y * width)] = rgba[0];
                 pixel_buffer[4 * (x + y * width) + 1] = rgba[1];
                 pixel_buffer[4 * (x + y * width) + 2] = rgba[2];

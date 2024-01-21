@@ -27,7 +27,11 @@ namespace CS248
 	class SoftwareRenderer : public SVGRenderer
 	{
 	public:
-		SoftwareRenderer() : sample_rate(1) {}
+		SoftwareRenderer() : sample_rate(1) {
+			printf("allocating buffer on the heap...\n");
+			this->super_sample_buffer_mem = std::vector<unsigned char>();
+			unsigned char *supersample_buffer = &(this->super_sample_buffer_mem[0]);
+		}
 
 		// Free used resources
 		virtual ~SoftwareRenderer() {}
@@ -45,7 +49,9 @@ namespace CS248
 		// Clear pixel buffer
 		inline void clear_buffer()
 		{
+			printf("clearing...\n");
 			memset(pixel_buffer, 255, 4 * width * height);
+			memset(supersample_buffer, 255, this->super_sample_buffer_mem.size());
 		}
 
 		// Set texture sampler
@@ -80,6 +86,9 @@ namespace CS248
 		// SVG coordinates to screen space coordinates
 		Matrix3x3 canvas_to_screen;
 
+		unsigned char *supersample_buffer;
+		std::vector<unsigned char> super_sample_buffer_mem;
+
 	}; // class SoftwareRenderer
 
 	class SoftwareRendererImp : public SoftwareRenderer
@@ -99,11 +108,6 @@ namespace CS248
 
 		void fill_sample(int sx, int sy, const Color &color);
 		void fill_pixel(int x, int y, const Color &color);
-
-		// Clear pixel buffer
-		inline void clear_super_sampled_buffer() {
-			memset(super_pixel_buffer, 255, 4 * 4 * width * height);
-		}
 
 	private:
 		// Primitive Drawing //
@@ -161,12 +165,6 @@ namespace CS248
 
 		// task5 alpha compositing
 		Color alpha_blending(Color pixel_color, Color color);
-
-		// Pixel buffer memory location (super sampled)
-		unsigned char *super_pixel_buffer;
-
-		// Pixel buffer memory location (super sampled)
-		std::vector<unsigned char> super_sample_buffer;
 
 		SoftwareRendererRef *ref;
 	}; // class SoftwareRendererImp
