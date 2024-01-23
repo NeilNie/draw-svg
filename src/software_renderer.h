@@ -30,7 +30,7 @@ namespace CS248
 		SoftwareRenderer() : sample_rate(1) {
 			printf("allocating buffer on the heap...\n");
 			this->super_sample_buffer_mem = std::vector<unsigned char>();
-			unsigned char *supersample_buffer = &(this->super_sample_buffer_mem[0]);
+			this->supersample_buffer = &(this->super_sample_buffer_mem[0]);
 		}
 
 		// Free used resources
@@ -50,8 +50,8 @@ namespace CS248
 		inline void clear_buffer()
 		{
 			printf("clearing...\n");
-			memset(pixel_buffer, 255, 4 * width * height);
-			memset(supersample_buffer, 255, this->super_sample_buffer_mem.size());
+			memset(this->pixel_buffer, 255, 4 * width * height);
+			memset(this->supersample_buffer, 255, sample_rate * sample_rate * 4 * width * height);
 		}
 
 		// Set texture sampler

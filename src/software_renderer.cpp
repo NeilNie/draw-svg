@@ -32,7 +32,8 @@ namespace CS248
         pixel_color.b = supersample_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
         pixel_color.a = supersample_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
 
-        pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        pixel_color = this->alpha_blending(pixel_color, color);
 
         supersample_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
         supersample_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -150,12 +151,12 @@ namespace CS248
 
         // Task 3 (part 1):
         // Modify this to implement the transformation stack
-
         if (element->type == POINT)
         {
             auto point = static_cast<Point &>(*element);
             point.position = transform_vector_2d(point.position, element->transform);
             draw_point(point);
+            point.position = transform_vector_2d(point.position, element->transform.inv());
         } 
         else if (element->type == LINE) 
         {
@@ -163,6 +164,8 @@ namespace CS248
             line.to = transform_vector_2d(line.to, element->transform);
             line.from = transform_vector_2d(line.from, element->transform);
             draw_line(line);
+            line.to = transform_vector_2d(line.to, element->transform.inv());
+            line.from = transform_vector_2d(line.from, element->transform.inv());
         }
         else if (element->type == POLYLINE)
         {
@@ -170,6 +173,8 @@ namespace CS248
             for (int i = 0; i < polyline.points.size(); i++)
                 polyline.points[i] = transform_vector_2d(polyline.points[i], element->transform);
             draw_polyline(polyline);
+            for (int i = 0; i < polyline.points.size(); i++)
+                polyline.points[i] = transform_vector_2d(polyline.points[i], element->transform.inv());
         }
         else if (element->type == RECT)
         {
@@ -177,6 +182,8 @@ namespace CS248
             rect.position = transform_vector_2d(rect.position, element->transform);
             rect.dimension = transform_vector_2d(rect.dimension, element->transform);
             draw_rect(rect);
+            rect.position = transform_vector_2d(rect.position, element->transform.inv());
+            rect.dimension = transform_vector_2d(rect.dimension, element->transform.inv());
         }
         else if (element->type == POLYGON)
         {
@@ -184,6 +191,8 @@ namespace CS248
             for (int i = 0; i < polygon.points.size(); i++)
                 polygon.points[i] = transform_vector_2d(polygon.points[i], element->transform);
             draw_polygon(polygon);
+            for (int i = 0; i < polygon.points.size(); i++)
+                polygon.points[i] = transform_vector_2d(polygon.points[i], element->transform.inv());
         }
         else if (element->type == ELLIPSE)
         {
@@ -191,6 +200,8 @@ namespace CS248
             ellipse.center = transform_vector_2d(ellipse.center, element->transform);
             ellipse.radius = transform_vector_2d(ellipse.radius, element->transform);
             draw_ellipse(ellipse);
+            ellipse.center = transform_vector_2d(ellipse.center, element->transform.inv());
+            ellipse.radius = transform_vector_2d(ellipse.radius, element->transform.inv());
         }
         else if (element->type == IMAGE)
         {
@@ -198,13 +209,19 @@ namespace CS248
             image.position = transform_vector_2d(image.position, element->transform);
             image.dimension = transform_vector_2d(image.dimension, element->transform);
             draw_image(image);
+            image.position = transform_vector_2d(image.position, element->transform.inv());
+            image.dimension = transform_vector_2d(image.dimension, element->transform.inv());
         }
         else if (element->type == GROUP)
         {
-            auto group = static_cast<Group &>(*element);
-            for (int i = 0; i < group.elements.size(); i++)
-                group.elements[i]->transform = element->transform * group.elements[i]->transform;
-            draw_group(group);
+            // auto group = static_cast<Group &>(*element);
+            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++){
+                static_cast<Group &>(*element).elements[i]->transform = element->transform * static_cast<Group &>(*element).elements[i]->transform;
+            }
+            draw_group(static_cast<Group &>(*element));
+            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++){
+                static_cast<Group &>(*element).elements[i]->transform = element->transform.inv() * static_cast<Group &>(*element).elements[i]->transform;
+            }
         }
 
     }
@@ -539,12 +556,15 @@ namespace CS248
         // printf("%f, %f, %f, %f\n", x0, y0, x1, y1);
         int level = 0;
 
-        for (int y = y0 + 1; y < y1 + 1; y++)
+        float diff_y = ceil(y0) - y0;
+        float diff_x = ceil(x0) - x0;
+
+        for (int y = ceil(y0); y < floor(y1); y++)
         {
-            for (int x = x0 + 1; x < x1 + 1; x++){
-                float u = x / (x1 - x0) - x0 / (x1 - x0), v = y / (y1 - y0) - y0 / (y1 - y0);
+            for (int x = ceil(x0); x < floor(x1); x++){
+                float u = (x - x0 - diff_x) / (x1 - x0), v = (y - y0 - diff_y) / (y1 - y0);
                 Color c = sampler->sample_bilinear(tex, u, v, level); //Color(1, 1, 0, 1); //
-                fill_sample(x, y, c);
+                fill_pixel(x, y, c);
             }
         }
     }
@@ -610,6 +630,17 @@ namespace CS248
     {
         // Task 5
         // Implement alpha compositing
+        float Er = color.r, Eg = color.g, Eb = color.b;
+        float Ea = color.a;
+
+        float Cr = pixel_color.r, Cg = pixel_color.g, Cb = pixel_color.b;
+        float Ca = pixel_color.a;
+
+        pixel_color.a = 1 - (1 - Ea) * (1 - Ca);
+        pixel_color.r = (1 - Ea) * Cr + Er;
+        pixel_color.g = (1 - Ea) * Cg + Eg;
+        pixel_color.b = (1 - Ea) * Cb + Eb;
+
         return pixel_color;
     }
 

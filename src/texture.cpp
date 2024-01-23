@@ -100,7 +100,7 @@ namespace CS248
 
         // Task 4: Implement nearest neighbour interpolation
         auto width = tex.mipmap[level].width;
-        auto height = tex.mipmap[level].height;
+        auto height = tex.mipmap[level].height - 1;
 
         int near_v = round(v * height), near_u = round(u * width);
 
@@ -134,22 +134,25 @@ namespace CS248
         for (int i = 0; i < 4; i++) {
 
             // two horizontal helper interpolations
-            float u0 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i]);
-            float u1 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_01 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_01) + i]);
+            float u0 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_00) + i]);
+            float u1 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_01) + i]);
 
             // two horizontal helper interpolations
             float t = v_01 - v;
-            rgba[i] = lerp(t, u0, u1);
+            rgba[i] = lerp(t, u1, u0);
 
-            // if (tex.mipmap[level].texels[4 * (v_00 + width * u_00) + i] != tex.mipmap[level].texels[4 * (v_00 + width * u_01) + i])
+            // if (tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i] != tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i])
             // {
-            //     printf("%f, %f, %d\n", u, v, v_00);
-            //     printf("%d, %d\n", tex.mipmap[level].texels[4 * (v_00 + width * u_00) + i], tex.mipmap[level].texels[4 * (v_00 + width * u_01) + i]);
-            //     printf("%d, %d\n", tex.mipmap[level].texels[4 * (v_01 + width * u_00) + i], tex.mipmap[level].texels[4 * (v_01 + width * u_01) + i]);
-            //     printf("%f, %f\n", u0, u1);
-            //     printf("%f\n", rgba[i]);
-            //     printf("--\n");
-            //     exit(0);
+                // printf("%d, %d\n", u_00, v_00);
+                // printf("%d, %d\n", u_01, v_01);
+
+                // printf("%f, %f, %d\n", u, v, v_00);
+                // printf("%d, %d\n", tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_00) + i]);
+                // printf("%d, %d\n", tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_01) + i]);
+                // printf("%f, %f\n", u0, u1);
+                // printf("%f\n", rgba[i]);
+                // printf("--\n");
+                // exit(0);
             // }
 
         }
