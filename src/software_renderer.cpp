@@ -67,7 +67,8 @@ namespace CS248
         pixel_color.b = pixel_buffer[4 * (x + y * width) + 2] * inv255;
         pixel_color.a = pixel_buffer[4 * (x + y * width) + 3] * inv255;
 
-        pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        pixel_color = this->alpha_blending(pixel_color, color);
 
         pixel_buffer[4 * (x + y * width)] = (uint8_t)(pixel_color.r * 255);
         pixel_buffer[4 * (x + y * width) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -215,13 +216,12 @@ namespace CS248
         else if (element->type == GROUP)
         {
             // auto group = static_cast<Group &>(*element);
-            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++){
+            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++)
                 static_cast<Group &>(*element).elements[i]->transform = element->transform * static_cast<Group &>(*element).elements[i]->transform;
-            }
             draw_group(static_cast<Group &>(*element));
-            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++){
+            for (int i = 0; i < static_cast<Group &>(*element).elements.size(); i++)
                 static_cast<Group &>(*element).elements[i]->transform = element->transform.inv() * static_cast<Group &>(*element).elements[i]->transform;
-            }
+
         }
 
     }
@@ -400,74 +400,56 @@ namespace CS248
 
         return;
 
-        int x, y, dx, dy, px, py, x_end, y_end;
-        dx = x1 - x0;
-        dy = y1 - y0;
-        px = 2 * abs(dy) - abs(dx);
-        py = 2 * abs(dx) - abs(dy);
-        if (abs(dy) <= abs(dx))
-        {
-            if (dx >= 0)
-            {
-                x = x0;
-                y = y0;
-                x_end = x1;
-            }
-            else
-            {
-                x = x1;
-                y = y1;
-                x_end = x0;
-            }
-            fill_sample(x, y, color);
-            for (int i = 0; x < x_end; i++)
-            {
-                x = x + 1;
-                if (px < 0)
-                {
-                    px = px + 2 * abs(dy);
-                }
-                else
-                {
-                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                        y = y + 1;
-                    else
-                        y = y - 1;
-                    px = px + 2 * (abs(dy) - abs(dx));
-                }
-                fill_sample(x, y, color);
-            }
+        int dx = x1 - x0;
+        int dy = y1 - y0;
+        int abs_dx = abs(dx);
+        int abs_dy = abs(dy);
+        int p;
+        int x, y;
+        int x_end, y_end;
+        bool steep = abs_dy > abs_dx;
+
+        if (steep) {
+            // Swap the differences and coordinates if the line is steep
+            swap(abs_dx, abs_dy);
+            swap(x0, y0);
+            swap(x1, y1);
         }
-        else
-        {
-            if (dy >= 0)
-            {
-                x = x0;
-                y = y0;
-                y_end = y1;
-            }
-            else
-            {
-                x = x1;
-                y = y1;
-                y_end = y0;
-            }
+
+        if (x0 > x1) {
+            // Swap the start and end points if necessary
+            swap(x0, x1);
+            swap(y0, y1);
+        }
+
+        // Initialize the starting point and end point
+        x = x0;
+        y = y0;
+        x_end = x1;
+        y_end = y1;
+        p = 2 * abs_dy - abs_dx;
+
+        if (steep) {
+            fill_sample(y, x, color); // Swap back for plotting
+        } else {
             fill_sample(x, y, color);
-            for (int i = 0; y < y_end; i++)
-            {
-                y = y + 1;
-                if (py <= 0)
-                {
-                    py = py + 2 * abs(dx);
+        }
+
+        for (int i = 0; x < x_end; i++) {
+            x = x + 1;
+            if (p < 0) {
+                p = p + 2 * abs_dy;
+            } else {
+                if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
+                    y = y + 1;
+                } else {
+                    y = y - 1;
                 }
-                else
-                {
-                    if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
-                        x = x + 1;
-                    else
-                        x = x - 1;
-                    py = py + 2 * (abs(dx) - abs(dy));
-                }
+                p = p + 2 * (abs_dy - abs_dx);
+            }
+            if (steep) {
+                fill_sample(y, x, color); // Swap back for plotting
+            } else {
                 fill_sample(x, y, color);
             }
         }
@@ -556,15 +538,19 @@ namespace CS248
         // printf("%f, %f, %f, %f\n", x0, y0, x1, y1);
         int level = 0;
 
-        float diff_y = ceil(y0) - y0;
-        float diff_x = ceil(x0) - x0;
+        float increment = 1.f / (float)sample_rate;
 
-        for (int y = ceil(y0); y < floor(y1); y++)
+        float min_x = round(x0) + round((x0 - round(x0)) / increment) * increment + increment / 2.f; // left border of the first sample
+        float min_y = round(y0) + round((y0 - round(y0)) / increment) * increment + increment / 2.f;
+        float max_x = round(x1) + round((x1 - round(x1)) / increment ) * increment; // right border of the last sample
+        float max_y = round(y1) + round((y1 - round(y1)) / increment) * increment;
+
+        for (float y = min_y; y < max_y; y+=increment)
         {
-            for (int x = ceil(x0); x < floor(x1); x++){
-                float u = (x - x0 - diff_x) / (x1 - x0), v = (y - y0 - diff_y) / (y1 - y0);
+            for (float x = min_x; x < max_x; x+=increment) {
+                float u = (x - x0) / ((x1 - x0)), v = (y - y0) / ((y1 - y0));
                 Color c = sampler->sample_bilinear(tex, u, v, level); //Color(1, 1, 0, 1); //
-                fill_pixel(x, y, c);
+                fill_sample(x * sample_rate, y * sample_rate, c);
             }
         }
     }
@@ -614,12 +600,8 @@ namespace CS248
                 pixel_buffer[4 * (x + y * width) + 1] = rgba[1];
                 pixel_buffer[4 * (x + y * width) + 2] = rgba[2];
                 pixel_buffer[4 * (x + y * width) + 3] = rgba[3];
-
-                total_pixels += 1;
             }
         }
-
-        printf("%d, %zu, %zu | %zu, %zu, \n", total_pixels, height * sample_rate, supersample_width, height, width);
 
         // Implement supersampling
         // You may also need to modify other functions marked with "Task 2".

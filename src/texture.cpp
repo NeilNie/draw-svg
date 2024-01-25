@@ -124,38 +124,34 @@ namespace CS248
         auto width = tex.mipmap[level].width;
         auto height = tex.mipmap[level].height;
 
-        // find u_00, u_01, v_00, v_01
-        int u_00 = (int)(u * width), u_01 = (int)(u * width + 1), v_00 = (int)(v * height), v_01 = (int)(v * height + 1);
-        u *= width;
-        v *= height;
+        int u_x = round(u * width), v_y = round(v * height);
+        float u_min = u_x - 0.5, v_min = v_y - 0.5;
+        float u_max = u_x + 0.5, v_max = v_y + 0.5;
 
-        float rgba[4] = {0.f, 0.f, 0.f, 0.f};
+        // clamping
+        u_min = (u_min < 0) ? u_max : u_min;
+        u_max = (u_max > width) ? u_min : u_max;
+        v_min = (v_min < 0) ? v_max : v_min;
+        v_max = (v_max > height) ? v_min : v_max;
 
-        for (int i = 0; i < 4; i++) {
+        // each half-integer sample point is stored at its coordinate -0.5 in texels
+        u_min -=0.5; u_max -=0.5; v_min -=0.5; v_max -=0.5; 
+        int u_00 = 4 * (v_max * (width) + u_min);
+        int u_01 = 4 * (v_min * (width) + u_min);
+        int u_10 = 4 * (v_max * (width) + u_max);
+        int u_11 = 4 * (v_min * (width) + u_max);
+        // in lerp, we need the half-integer coordinates back
+        u_min +=0.5; u_max +=0.5; v_min +=0.5; v_max +=0.5; 
 
-            // two horizontal helper interpolations
-            float u0 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_00) + i]);
-            float u1 = lerp(fabs(u - u_00), tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_01) + i]);
-
-            // two horizontal helper interpolations
-            float t = v_01 - v;
+        unsigned char rgba[4] = {0, 0, 0, 0};
+        for (int i = 0; i < 4; i++)
+        {
+            float u0 = lerp(u * width - u_min, tex.mipmap[level].texels[u_00 + i], tex.mipmap[level].texels[u_10 + i]);
+            float u1 = lerp(u * width - u_min, tex.mipmap[level].texels[u_01 + i], tex.mipmap[level].texels[u_11 + i]);
+            float t = v * height - v_min;
             rgba[i] = lerp(t, u1, u0);
-
-            // if (tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i] != tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i])
-            // {
-                // printf("%d, %d\n", u_00, v_00);
-                // printf("%d, %d\n", u_01, v_01);
-
-                // printf("%f, %f, %d\n", u, v, v_00);
-                // printf("%d, %d\n", tex.mipmap[level].texels[4 * (u_00 + width * v_00) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_00) + i]);
-                // printf("%d, %d\n", tex.mipmap[level].texels[4 * (u_00 + width * v_01) + i], tex.mipmap[level].texels[4 * (u_01 + width * v_01) + i]);
-                // printf("%f, %f\n", u0, u1);
-                // printf("%f\n", rgba[i]);
-                // printf("--\n");
-                // exit(0);
-            // }
-
         }
+
         return Color(rgba[0] / 255.0f, rgba[1] / 255.0f, rgba[2] / 255.0f, rgba[3] / 255.0f);
     }
 
