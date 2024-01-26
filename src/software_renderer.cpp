@@ -32,8 +32,8 @@ namespace CS248
         pixel_color.b = supersample_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
         pixel_color.a = supersample_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
 
-        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
-        pixel_color = this->alpha_blending(pixel_color, color);
+        pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        // pixel_color = this->alpha_blending(pixel_color, color);
 
         supersample_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
         supersample_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -67,8 +67,8 @@ namespace CS248
         pixel_color.b = pixel_buffer[4 * (x + y * width) + 2] * inv255;
         pixel_color.a = pixel_buffer[4 * (x + y * width) + 3] * inv255;
 
-        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
-        pixel_color = this->alpha_blending(pixel_color, color);
+        pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        // pixel_color = this->alpha_blending(pixel_color, color);
 
         pixel_buffer[4 * (x + y * width)] = (uint8_t)(pixel_color.r * 255);
         pixel_buffer[4 * (x + y * width) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -546,9 +546,9 @@ namespace CS248
         float increment = 1.f / (float)sample_rate;
 
         // draw for each pixel within the bounding box
-        for (float y = floor(min_y); y < ceil(max_y) + increment; y+=increment)
+        for (float y = round(min_y) + 0.5 / sample_rate; y < max_y; y+=increment)
         {
-            for (float x = floor(min_x); x < ceil(max_x) + increment; x+=increment)
+            for (float x = round(min_x) + 0.5 / sample_rate; x < max_x; x+=increment)
             {
                 Vector2D V1 = Vector2D(x - x0, (y - y0));
                 Vector2D V2 = Vector2D(x - x1, (y - y1));
