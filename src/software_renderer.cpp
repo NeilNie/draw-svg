@@ -424,7 +424,6 @@ namespace CS248
         // Task 0:
         // Implement Bresenham's algorithm (delete the line below and implement your own)
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
-
         return;
 
         bool steep = fabs(y1 - y0) > fabs(x1 - x0);
@@ -479,13 +478,13 @@ namespace CS248
 
         // Main loop
         if (steep) {
-            for (float x = xpxl1 + 1.f / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
+            for (float x = xpxl1 + 1.f / sample_rate + 0.5 / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
                 rasterize_point((float)ipart(intery), x, color);
                 rasterize_point((float)ipart(intery) + 1.f / sample_rate, x, color);
                 intery += gradient / sample_rate;
             }
         } else {
-            for (float x = xpxl1 + 1.f / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
+            for (float x = xpxl1 + 1.f / sample_rate + 0.5 / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
                 rasterize_point(x, ipart(intery), color);
                 rasterize_point(x, ipart(intery) + 1.f / sample_rate, color);
                 intery += gradient / sample_rate;
@@ -559,7 +558,7 @@ namespace CS248
                      N3.x * V3.x + N3.y * V3.y <= 0))
                 {
                     // don't forget to scale by sample rate when populating the buffer matrix
-                    fill_sample((int)(x * sample_rate), (int)(y * sample_rate), color);
+                    rasterize_point(x, y, color);
                 }
             }
         }
