@@ -381,12 +381,39 @@ namespace CS248
 
         // fill sample - NOT doing alpha blending!
         // Call fill_pixel here to run alpha blending
-        fill_sample(sx, sy, color);
+        fill_pixel(sx, sy, color);
+        fill_sample(sx * sample_rate, sy * sample_rate, color);
 
         pixel_buffer[4 * (sx + sy * width)] = (uint8_t)(color.r * 255);
         pixel_buffer[4 * (sx + sy * width) + 1] = (uint8_t)(color.g * 255);
         pixel_buffer[4 * (sx + sy * width) + 2] = (uint8_t)(color.b * 255);
         pixel_buffer[4 * (sx + sy * width) + 3] = (uint8_t)(color.a * 255);
+    }
+
+    void swap(float *a, float *b) {
+        float temp = *a;
+        *a = *b;
+        *b = temp;
+    }
+
+    // Integer part of x
+    int ipart(double x) {
+        return (int)floor(x);
+    }
+
+    // Round x to nearest integer
+    int round(double x) {
+        return ipart(x + 0.5);
+    }
+
+    // Fractional part of x
+    double fpart(double x) {
+        return x - floor(x);
+    }
+
+    // Remaining fractional part of x
+    double rfpart(double x) {
+        return 1 - fpart(x);
     }
 
     void SoftwareRendererImp::rasterize_line(float x0, float y0,
@@ -400,57 +427,68 @@ namespace CS248
 
         return;
 
-        int dx = x1 - x0;
-        int dy = y1 - y0;
-        int abs_dx = abs(dx);
-        int abs_dy = abs(dy);
-        int p;
-        int x, y;
-        int x_end, y_end;
-        bool steep = abs_dy > abs_dx;
+        bool steep = fabs(y1 - y0) > fabs(x1 - x0);
 
         if (steep) {
-            // Swap the differences and coordinates if the line is steep
-            swap(abs_dx, abs_dy);
-            swap(x0, y0);
-            swap(x1, y1);
+            swap(&x0, &y0);
+            swap(&x1, &y1);
         }
-
         if (x0 > x1) {
-            // Swap the start and end points if necessary
-            swap(x0, x1);
-            swap(y0, y1);
+            swap(&x0, &x1);
+            swap(&y0, &y1);
         }
 
-        // Initialize the starting point and end point
-        x = x0;
-        y = y0;
-        x_end = x1;
-        y_end = y1;
-        p = 2 * abs_dy - abs_dx;
+        double dx = x1 - x0;
+        double dy = y1 - y0;
+        double gradient = dx == 0.0 ? 1.0 / sample_rate : dy / dx;
+
+        // Handle first endpoint
+        double xend = round(x0);
+        double yend = y0 + gradient * (xend - x0);
+        double xgap = rfpart(x0 + 0.5);
+        int xpxl1 = (int)xend;
+        int ypxl1 = ipart(yend);
+
+        if (steep) 
+        {
+            rasterize_point(ypxl1,   xpxl1, color);
+            rasterize_point(ypxl1+1, xpxl1, color);
+        } else 
+        {
+            rasterize_point(xpxl1, ypxl1,   color);
+            rasterize_point(xpxl1, ypxl1+1, color);
+        }
+        double intery = yend + gradient;
+
+        // Handle second endpoint
+        xend = round(x1);
+        yend = y1 + gradient * (xend - x1);
+        xgap = fpart(x1 + 0.5);
+        int xpxl2 = (int)xend;
+        int ypxl2 = ipart(yend);
 
         if (steep) {
-            fill_sample(y, x, color); // Swap back for plotting
+            rasterize_point(ypxl2, xpxl2, color);
+            rasterize_point(ypxl2+1, xpxl2, color);
         } else {
-            fill_sample(x, y, color);
+            rasterize_point(xpxl2, ypxl2, color);
+            rasterize_point(xpxl2, ypxl2+1, color);
         }
 
-        for (int i = 0; x < x_end; i++) {
-            x = x + 1;
-            if (p < 0) {
-                p = p + 2 * abs_dy;
-            } else {
-                if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0)) {
-                    y = y + 1;
-                } else {
-                    y = y - 1;
-                }
-                p = p + 2 * (abs_dy - abs_dx);
+        float increment = 1.f / sample_rate;
+
+        // Main loop
+        if (steep) {
+            for (float x = xpxl1 + 1.f / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
+                rasterize_point((float)ipart(intery), x, color);
+                rasterize_point((float)ipart(intery) + 1.f / sample_rate, x, color);
+                intery += gradient / sample_rate;
             }
-            if (steep) {
-                fill_sample(y, x, color); // Swap back for plotting
-            } else {
-                fill_sample(x, y, color);
+        } else {
+            for (float x = xpxl1 + 1.f / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
+                rasterize_point(x, ipart(intery), color);
+                rasterize_point(x, ipart(intery) + 1.f / sample_rate, color);
+                intery += gradient / sample_rate;
             }
         }
         // Advanced Task
