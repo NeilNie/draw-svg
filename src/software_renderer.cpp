@@ -383,11 +383,6 @@ namespace CS248
         // Call fill_pixel here to run alpha blending
         fill_pixel(sx, sy, color);
         fill_sample(sx * sample_rate, sy * sample_rate, color);
-
-        pixel_buffer[4 * (sx + sy * width)] = (uint8_t)(color.r * 255);
-        pixel_buffer[4 * (sx + sy * width) + 1] = (uint8_t)(color.g * 255);
-        pixel_buffer[4 * (sx + sy * width) + 2] = (uint8_t)(color.b * 255);
-        pixel_buffer[4 * (sx + sy * width) + 3] = (uint8_t)(color.a * 255);
     }
 
     void swap(float *a, float *b) {
@@ -397,22 +392,22 @@ namespace CS248
     }
 
     // Integer part of x
-    int ipart(double x) {
+    int ipart(float x) {
         return (int)floor(x);
     }
 
     // Round x to nearest integer
-    int round(double x) {
+    int round(float x) {
         return ipart(x + 0.5);
     }
 
     // Fractional part of x
-    double fpart(double x) {
+    float fpart(float x) {
         return x - floor(x);
     }
 
     // Remaining fractional part of x
-    double rfpart(double x) {
+    float rfpart(float x) {
         return 1 - fpart(x);
     }
 
@@ -426,6 +421,8 @@ namespace CS248
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
         return;
 
+        Color tmp;
+
         bool steep = fabs(y1 - y0) > fabs(x1 - x0);
 
         if (steep) {
@@ -437,58 +434,71 @@ namespace CS248
             swap(&y0, &y1);
         }
 
-        double dx = x1 - x0;
-        double dy = y1 - y0;
-        double gradient = dx == 0.0 ? 1.0 / sample_rate : dy / dx;
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float gradient = dx == 0.0 ? 1.0 : dy / dx;
 
         // Handle first endpoint
-        double xend = round(x0);
-        double yend = y0 + gradient * (xend - x0);
-        double xgap = rfpart(x0 + 0.5);
-        int xpxl1 = (int)xend;
-        int ypxl1 = ipart(yend);
+        float xend = round(x0) + 0.5 / sample_rate;
+        float yend = y0 + gradient * (xend - x0) - 0.5 / sample_rate;
+        float xgap = rfpart(x0 + 0.5 / sample_rate);
+        float xpxl1 = xend;
+        float ypxl1 = yend;
 
         if (steep) 
         {
-            rasterize_point(ypxl1,   xpxl1, color);
-            rasterize_point(ypxl1+1, xpxl1, color);
+            tmp = Color(color.r, color.g, color.b, color.a * rfpart(yend) * xgap);
+            rasterize_point(ypxl1, xpxl1, tmp);
+            tmp = Color(color.r, color.g, color.b, color.a * fpart(yend) * xgap);
+            rasterize_point(ypxl1+1, xpxl1, tmp);
         } else 
         {
-            rasterize_point(xpxl1, ypxl1,   color);
-            rasterize_point(xpxl1, ypxl1+1, color);
+            tmp = Color(color.r, color.g, color.b, color.a * rfpart(yend) * xgap);
+            rasterize_point(xpxl1, ypxl1, tmp);
+            tmp = Color(color.r, color.g, color.b, color.a * fpart(yend) * xgap);
+            rasterize_point(xpxl1, ypxl1+1, tmp);
         }
-        double intery = yend + gradient;
+        float intery = yend + gradient;
 
         // Handle second endpoint
-        xend = round(x1);
-        yend = y1 + gradient * (xend - x1);
-        xgap = fpart(x1 + 0.5);
-        int xpxl2 = (int)xend;
-        int ypxl2 = ipart(yend);
+        xend = round(x1) + 0.5 / sample_rate;
+        yend = y1 + gradient * (xend - x1) - 0.5 / sample_rate;
+        xgap = fpart(x1 + 0.5 / sample_rate);
+        float xpxl2 = xend; //(int)xend;
+        float ypxl2 = yend; //ipart(yend);
 
-        if (steep) {
-            rasterize_point(ypxl2, xpxl2, color);
-            rasterize_point(ypxl2+1, xpxl2, color);
-        } else {
-            rasterize_point(xpxl2, ypxl2, color);
-            rasterize_point(xpxl2, ypxl2+1, color);
+        if (steep) 
+        {
+            tmp = Color(color.r, color.g, color.b, color.a * rfpart(yend) * xgap);
+            rasterize_point(ypxl2, xpxl2, tmp);
+            tmp = Color(color.r, color.g, color.b, color.a * fpart(yend) * xgap);
+            rasterize_point(ypxl2+1, xpxl2, tmp);
+        } else 
+        {
+            tmp = Color(color.r, color.g, color.b, color.a * rfpart(yend) * xgap);
+            rasterize_point(xpxl2, ypxl2, tmp);
+            tmp = Color(color.r, color.g, color.b, color.a * fpart(yend) * xgap);
+            rasterize_point(xpxl2, ypxl2+1, tmp);
         }
 
         float increment = 1.f / sample_rate;
 
         // Main loop
-        if (steep) {
-            for (float x = xpxl1 + 1.f / sample_rate + 0.5 / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
-                rasterize_point((float)ipart(intery), x, color);
-                rasterize_point((float)ipart(intery) + 1.f / sample_rate, x, color);
-                intery += gradient / sample_rate;
+        
+        for (float x = xpxl1 + 1.f; x < xpxl2; x += increment) {
+            if (steep) {
+                tmp = Color(color.r, color.g, color.b, color.a * rfpart(intery));
+                rasterize_point((float)ipart(intery), x, tmp);
+                tmp = Color(color.r, color.g, color.b, color.a * fpart(intery));
+                rasterize_point((float)ipart(intery) + 1.f, x, color);
+
+            } else {
+                tmp = Color(color.r, color.g, color.b, color.a * rfpart(intery));
+                rasterize_point(x, ipart(intery), tmp);
+                tmp = Color(color.r, color.g, color.b, color.a * fpart(intery));
+                rasterize_point(x, ipart(intery) + 1.f, tmp);
             }
-        } else {
-            for (float x = xpxl1 + 1.f / sample_rate + 0.5 / sample_rate; x <= xpxl2 - 1.f / sample_rate; x += increment) {
-                rasterize_point(x, ipart(intery), color);
-                rasterize_point(x, ipart(intery) + 1.f / sample_rate, color);
-                intery += gradient / sample_rate;
-            }
+            intery += gradient;
         }
         // Advanced Task
         // Drawing Smooth Lines with Line Width
@@ -545,9 +555,9 @@ namespace CS248
         float increment = 1.f / (float)sample_rate;
 
         // draw for each pixel within the bounding box
-        for (float y = round(min_y) + 0.5 / sample_rate; y < max_y; y+=increment)
+        for (float y = floor(min_y) + 0.5 / sample_rate; y < ceil(max_y) + 0.5 / sample_rate; y+=increment)
         {
-            for (float x = round(min_x) + 0.5 / sample_rate; x < max_x; x+=increment)
+            for (float x = floor(min_x) + 0.5 / sample_rate; x < ceil(max_x) + 0.5 / sample_rate; x+=increment)
             {
                 Vector2D V1 = Vector2D(x - x0, (y - y0));
                 Vector2D V2 = Vector2D(x - x1, (y - y1));
@@ -649,16 +659,10 @@ namespace CS248
     {
         // Task 5
         // Implement alpha compositing
-        float Er = color.r, Eg = color.g, Eb = color.b;
-        float Ea = color.a;
-
-        float Cr = pixel_color.r, Cg = pixel_color.g, Cb = pixel_color.b;
-        float Ca = pixel_color.a;
-
-        pixel_color.a = 1 - (1 - Ea) * (1 - Ca);
-        pixel_color.r = (1 - Ea) * Cr + Er;
-        pixel_color.g = (1 - Ea) * Cg + Eg;
-        pixel_color.b = (1 - Ea) * Cb + Eb;
+        pixel_color.a = 1 - (1 - color.a) * (1 - pixel_color.a);
+        pixel_color.r = (1 - color.a) *  pixel_color.r + color.r;
+        pixel_color.g = (1 - color.a) *  pixel_color.g + color.g;
+        pixel_color.b = (1 - color.a) * pixel_color.b + color.b;
 
         return pixel_color;
     }
