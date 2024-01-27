@@ -417,7 +417,6 @@ namespace CS248
     {
 
         // Task 0:
-        // Implement Bresenham's algorithm (delete the line below and implement your own)
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
         return;
 
@@ -447,7 +446,7 @@ namespace CS248
 
         if (steep) 
         {
-            tmp = Color(color.r, color.g, color.b, color.a * rfpart(yend) * xgap);
+            tmp = Color(color.r * rfpart(yend) * xgap, color.g * rfpart(yend) * xgap, color.b * rfpart(yend) * xgap, color.a * rfpart(yend) * xgap);
             rasterize_point(ypxl1, xpxl1, tmp);
             tmp = Color(color.r, color.g, color.b, color.a * fpart(yend) * xgap);
             rasterize_point(ypxl1+1, xpxl1, tmp);
@@ -486,17 +485,17 @@ namespace CS248
         // Main loop
         
         for (float x = xpxl1 + 1.f; x < xpxl2; x += increment) {
-            if (steep) {
-                tmp = Color(color.r, color.g, color.b, color.a * rfpart(intery));
-                rasterize_point((float)ipart(intery), x, tmp);
-                tmp = Color(color.r, color.g, color.b, color.a * fpart(intery));
-                rasterize_point((float)ipart(intery) + 1.f, x, color);
+            Color c1 = Color(color.r * rfpart(intery), color.g * rfpart(intery), color.b * rfpart(intery), color.a * rfpart(intery));
+            Color c2 = Color(color.r * fpart(intery), color.g * fpart(intery), color.b * fpart(intery), color.a * rfpart(intery));
 
-            } else {
-                tmp = Color(color.r, color.g, color.b, color.a * rfpart(intery));
-                rasterize_point(x, ipart(intery), tmp);
-                tmp = Color(color.r, color.g, color.b, color.a * fpart(intery));
-                rasterize_point(x, ipart(intery) + 1.f, tmp);
+            if (steep) 
+            {
+                rasterize_point((float)ipart(intery), x, c1);
+                rasterize_point((float)ipart(intery) + 1.f, x, c2);
+            } else 
+            {
+                rasterize_point(x, ipart(intery), c1);
+                rasterize_point(x, ipart(intery) + 1.f, c2);
             }
             intery += gradient;
         }
