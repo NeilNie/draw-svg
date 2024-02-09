@@ -32,8 +32,8 @@ namespace CS248
         pixel_color.b = supersample_buffer[4 * (sx + sy * width * sample_rate) + 2] * inv255;
         pixel_color.a = supersample_buffer[4 * (sx + sy * width * sample_rate) + 3] * inv255;
 
-        pixel_color = ref->alpha_blending_helper(pixel_color, color);
-        // pixel_color = this->alpha_blending(pixel_color, color);
+        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        pixel_color = this->alpha_blending(pixel_color, color);
 
         supersample_buffer[4 * (sx + sy * width * sample_rate)] = (uint8_t)(pixel_color.r * 255);
         supersample_buffer[4 * (sx + sy * width * sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -67,8 +67,8 @@ namespace CS248
         pixel_color.b = pixel_buffer[4 * (x + y * width) + 2] * inv255;
         pixel_color.a = pixel_buffer[4 * (x + y * width) + 3] * inv255;
 
-        pixel_color = ref->alpha_blending_helper(pixel_color, color);
-        // pixel_color = this->alpha_blending(pixel_color, color);
+        // pixel_color = ref->alpha_blending_helper(pixel_color, color);
+        pixel_color = this->alpha_blending(pixel_color, color);
 
         pixel_buffer[4 * (x + y * width)] = (uint8_t)(pixel_color.r * 255);
         pixel_buffer[4 * (x + y * width) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -420,6 +420,60 @@ namespace CS248
         ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
         return;
 
+        /*
+        int dx = x1 - x0;
+        int dy = y1 - y0;
+
+        // Decision variables for pixel selection
+        int decisionX = 2 * abs(dy) - abs(dx);
+        int decisionY = 2 * abs(dx) - abs(dy);
+
+        // Determine whether to iterate over x or y
+        if (abs(dy) <= abs(dx)) {
+            int x = dx >= 0 ? x0 : x1;
+            int y = dx >= 0 ? y0 : y1;
+            int xEnd = dx >= 0 ? x1 : x0;
+
+            rasterize_point(x, y, color);
+
+            // Iterate over x
+            while (x < xEnd) {
+                x++;
+                if (decisionX < 0) {
+                    decisionX += 2 * abs(dy);
+                } else {
+                    y += (dx < 0 && dy < 0) || (dx > 0 && dy > 0) ? 1 : -1;
+                    decisionX += 2 * (abs(dy) - abs(dx));
+                }
+                rasterize_point(x, y, color);
+            }
+        } else {
+            int x = dy >= 0 ? x0 : x1;
+            int y = dy >= 0 ? y0 : y1;
+            int yEnd = dy >= 0 ? y1 : y0;
+
+            rasterize_point(x, y, color);
+
+            // Iterate over y
+            while (y < yEnd) {
+                y++;
+                if (decisionY <= 0) {
+                    decisionY += 2 * abs(dx);
+                } else {
+                    x += (dx < 0 && dy < 0) || (dx > 0 && dy > 0) ? 1 : -1;
+                    decisionY += 2 * (abs(dx) - abs(dy));
+                }
+                rasterize_point(x, y, color);
+            }
+        }
+        return;
+        */
+
+        // === 
+        // Xiaolin Wu algorithm
+
+        // /*
+
         Color tmp;
 
         bool steep = fabs(y1 - y0) > fabs(x1 - x0);
@@ -435,16 +489,16 @@ namespace CS248
 
         float dx = x1 - x0;
         float dy = y1 - y0;
-        float gradient = dx == 0.0 ? 1.0 : dy / dx;
+        float gradient = dx == 0.0 ? 1.0 : dy / dx / sample_rate;
 
         // Handle first endpoint
-        float xend = round(x0) + 0.5 / sample_rate;
-        float yend = y0 + gradient * (xend - x0) - 0.5 / sample_rate;
-        float xgap = rfpart(x0 + 0.5 / sample_rate);
+        float xend = round(x0) + 0.5 / (float)sample_rate;
+        float yend = y0 + gradient * (xend - x0) - 0.5 / (float)sample_rate;
+        float xgap = rfpart(x0 + 0.5 / (float)sample_rate);
         float xpxl1 = xend;
         float ypxl1 = yend;
 
-        if (steep) 
+        if (steep)
         {
             tmp = Color(color.r * rfpart(yend) * xgap, color.g * rfpart(yend) * xgap, color.b * rfpart(yend) * xgap, color.a * rfpart(yend) * xgap);
             rasterize_point(ypxl1, xpxl1, tmp);
@@ -460,9 +514,9 @@ namespace CS248
         float intery = yend + gradient;
 
         // Handle second endpoint
-        xend = round(x1) + 0.5 / sample_rate;
-        yend = y1 + gradient * (xend - x1) - 0.5 / sample_rate;
-        xgap = fpart(x1 + 0.5 / sample_rate);
+        xend = round(x1) + 0.5 / (float)sample_rate;
+        yend = y1 + gradient * (xend - x1) - 0.5 / (float)sample_rate;
+        xgap = fpart(x1 + 0.5 / (float)sample_rate);
         float xpxl2 = xend; //(int)xend;
         float ypxl2 = yend; //ipart(yend);
 
@@ -483,22 +537,28 @@ namespace CS248
         float increment = 1.f / sample_rate;
 
         // Main loop
-        
-        for (float x = xpxl1 + 1.f; x < xpxl2; x += increment) {
-            Color c1 = Color(color.r * rfpart(intery), color.g * rfpart(intery), color.b * rfpart(intery), color.a * rfpart(intery));
-            Color c2 = Color(color.r * fpart(intery), color.g * fpart(intery), color.b * fpart(intery), color.a * rfpart(intery));
 
-            if (steep) 
-            {
+        if (steep) {
+            for (float x = xpxl1 + 0.5 / sample_rate; x <= xpxl2 - 0.5 / sample_rate; x += increment) {
+                Color c1 = Color(color.r * rfpart(intery), color.g * rfpart(intery), color.b * rfpart(intery), color.a * rfpart(intery));
+                Color c2 = Color(color.r * fpart(intery), color.g * fpart(intery), color.b * fpart(intery), color.a * fpart(intery));
+
                 rasterize_point((float)ipart(intery), x, c1);
-                rasterize_point((float)ipart(intery) + 1.f, x, c2);
-            } else 
-            {
-                rasterize_point(x, ipart(intery), c1);
-                rasterize_point(x, ipart(intery) + 1.f, c2);
+                rasterize_point((float)ipart(intery) + 1.f / sample_rate, x, c2);
+                intery += gradient;
             }
-            intery += gradient;
+        } else {
+            for (float x = xpxl1 + 0.5 / sample_rate; x <= xpxl2 - 0.5 / sample_rate; x += increment) {
+                Color c1 = Color(color.r * rfpart(intery), color.g * rfpart(intery), color.b * rfpart(intery), color.a * rfpart(intery));
+                Color c2 = Color(color.r * fpart(intery), color.g * fpart(intery), color.b * fpart(intery), color.a * fpart(intery));
+
+                rasterize_point(x, ipart(intery), c1);
+                rasterize_point(x, ipart(intery) + 1.f / sample_rate, c2);
+                intery += gradient;
+            }
         }
+
+        // */
         // Advanced Task
         // Drawing Smooth Lines with Line Width
     }
